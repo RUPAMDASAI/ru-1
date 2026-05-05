@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus AI Calculator</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050505;
+            --glass-bg: rgba(20, 20, 30, 0.65);
+            --glass-border: rgba(0, 255, 255, 0.2);
+            --neon-blue: #00f3ff;
+            --neon-purple: #bc13fe;
+            --text-main: #ffffff;
+            --text-dim: rgba(255, 255, 255, 0.6);
+            --key-bg: rgba(255, 255, 255, 0.05);
+            --key-hover: rgba(0, 243, 255, 0.15);
+            --key-active: rgba(0, 243, 255, 0.3);
+            --danger: #ff003c;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(0, 243, 255, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(188, 19, 254, 0.08), transparent 25%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        /* Abstract Background Elements */
+        .grid-bg {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            z-index: -1;
+            transform: perspective(500px) rotateX(60deg) translateY(-100px) scale(3);
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: perspective(500px) rotateX(60deg) translateY(0) scale(3); }
+            100% { transform: perspective(500px) rotateX(60deg) translateY(30px) scale(3); }
+        }
+
+        /* Main Container */
+        .calculator-container {
+            display: flex;
+            flex-direction: row;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 
+                0 0 40px rgba(0, 243, 255, 0.1),
+                inset 0 0 20px rgba(0, 243, 255, 0.05);
+            position: relative;
+            z-index: 10;
+            width: max-content;
+            max-width: 100%;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* Inner Calculator Layout */
+        .calc-main {
+            width: 100vw;
+            max-width: 360px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top AI Input Section */
+        .ai-input-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .ai-icon {
+            position: absolute;
+            left: 12px;
+            color: var(--neon-blue);
+            text-shadow: 0 0 8px var(--neon-blue);
+            animation: pulse 2s infinite;
+        }
+
+        .ai-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-radius: 12px;
+            padding: 12px 40px 12px 40px;
+            color: var(--neon-blue);
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .ai-input::placeholder {
+            color: rgba(0, 243, 255, 0.4);
+        }
+
+        .ai-input:focus {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2), inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .voice-btn {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .voice-btn:hover, .voice-btn.recording {
+            color: var(--neon-purple);
+            text-shadow: 0 0 8px var(--neon-purple);
+        }
+
+        /* Display Area */
+        .display-area {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: right;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .display-area::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+            opacity: 0.5;
+        }
+
+        .expression {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            min-height: 1.5rem;
+            margin-bottom: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            word-wrap: break-word;
+        }
+
+        .result {
+            color: var(--text-main);
+            font-size: 2.8rem;
+            font-weight: 300;
+            word-wrap: break-word;
+            text-shadow: 0 0 10px rgba(255,255,255,0.2);
+            transition: all 0.2s;
+        }
+
+        .ai-processing {
+            font-size: 1.2rem;
+            color: var(--neon-purple);
+            text-shadow: 0 0 10px var(--neon-purple);
+            display: none;
+            animation: blink 1s infinite;
+        }
+
+        /* Keypad Grid */
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        .btn {
+            background: var(--key-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 16px 0;
+            font-size: 1.2rem;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 0; height: 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s, height 0.4s;
+        }
+
+        .btn:active::before {
+            width: 200px;
+            height: 200px;
+            opacity: 0;
+        }
+
+        .btn:hover {
+            background: var(--key-hover);
+            border-color: rgba(0, 243, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+        }
+
+        .btn:active {
+            background: var(--key-active);
+            transform: scale(0.95);
+        }
+
+        /* Specific Button Styles */
+        .btn-op {
+            color: var(--neon-blue);
+            font-weight: 600;
+            background: rgba(0, 243, 255, 0.05);
+        }
+
+        .btn-func {
+            color: var(--neon-purple);
+            font-size: 1rem;
+        }
+
+        .btn-clear {
+            color: var(--danger);
+        }
+
+        .btn-eq {
+            grid-row: span 2;
+            background: linear-gradient(135deg, rgba(0, 243, 255, 0.2), rgba(188, 19, 254, 0.2));
+            border-color: rgba(0, 243, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.15);
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+        .btn-eq:hover {
+            background: linear-gradient(135deg, rgba(0, 243, 255, 0.3), rgba(188, 19, 254, 0.3));
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.3);
+        }
+
+        /* Responsive Side Panel (Desktop Expanding vs Mobile Overlay) */
+        .side-panel {
+            width: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
+
+        .side-panel.active {
+            width: 368px; /* 320 content + 24 margin + 24 padding roughly */
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .side-panel-inner {
+            width: 320px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding-left: 24px;
+            margin-left: 24px;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .panel-title {
+            color: var(--neon-purple);
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+        }
+
+        .panel-close {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .panel-close:hover {
+            color: var(--danger);
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            padding-right: 5px;
+        }
+
+        .panel-content::-webkit-scrollbar { width: 4px; }
+        .panel-content::-webkit-scrollbar-thumb {
+            background: rgba(0, 243, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .history-item {
+            margin-bottom: 15px;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 8px;
+            transition: background 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .history-item:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(0, 243, 255, 0.2);
+        }
+
+        .history-expr { margin-bottom: 4px; font-size: 0.85rem; }
+        .history-res { color: var(--neon-blue); font-weight: bold; }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { opacity: 0.6; transform: scale(0.95); }
+            50% { opacity: 1; transform: scale(1.05); }
+            100% { opacity: 0.6; transform: scale(0.95); }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Controls Row */
+        .controls-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s;
+            padding: 6px 10px;
+            border-radius: 6px;
+        }
+
+        .control-btn:hover {
+            color: var(--neon-blue);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 800px) {
+            body { padding: 10px; }
+            .calculator-container {
+                width: 100%;
+                max-width: 400px;
+                padding: 20px;
+            }
+            .calc-main { max-width: 100%; }
+            
+            .side-panel {
+                position: absolute;
+                top: 0; left: 0;
+                width: 100%; height: 100%;
+                background: rgba(10, 10, 15, 0.85);
+                backdrop-filter: blur(30px);
+                -webkit-backdrop-filter: blur(30px);
+                border-radius: 24px;
+                z-index: 20;
+                opacity: 0;
+                pointer-events: none;
+                transform: translateY(20px) scale(0.98);
+            }
+            
+            .side-panel.active {
+                width: 100%; /* overwrite */
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                pointer-events: all;
+            }
+            
+            .side-panel-inner {
+                width: 100%;
+                padding: 24px;
+                margin: 0;
+                border-left: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="grid-bg"></div>
+
+    <div class="calculator-container">
+        
+        <!-- Left / Main Calculator Column -->
+        <div class="calc-main">
+            <!-- AI Input -->
+            <div class="ai-input-wrapper">
+                <i class="fa-solid fa-robot ai-icon"></i>
+                <input type="text" class="ai-input" id="aiQuery" placeholder="Ask AI: e.g. 'Solve 15% of 1024'" autocomplete="off">
+                <button class="voice-btn" id="voiceBtn" title="Voice Input">
+                    <i class="fa-solid fa-microphone"></i>
+                </button>
+            </div>
+
+            <div class="controls-row">
+                <button class="control-btn" onclick="togglePanel('history')">
+                    <i class="fa-solid fa-clock-rotate-left"></i> History
+                </button>
+                <button class="control-btn" onclick="togglePanel('steps')">
+                    <i class="fa-solid fa-list-ol"></i> AI Steps
+                </button>
+            </div>
+
+            <!-- Display -->
+            <div class="display-area">
+                <div class="expression" id="expressionDisplay"></div>
+                <div class="result" id="resultDisplay">0</div>
+                <div class="ai-processing" id="aiProcessing">Analyzing...</div>
+            </div>
+
+            <!-- Keypad -->
+            <div class="keypad">
+                <!-- Row 1: Functions -->
+                <button class="btn btn-func" onclick="appendFunc('sin')">sin</button>
+                <button class="btn btn-func" onclick="appendFunc('cos')">cos</button>
+                <button class="btn btn-func" onclick="appendFunc('tan')">tan</button>
+                <button class="btn btn-func" onclick="appendFunc('sqrt')">√</button>
+
+                <!-- Row 2: Controls & Basic Ops -->
+                <button class="btn btn-clear" onclick="clearAll()">AC</button>
+                <button class="btn btn-clear" onclick="deleteLast()">DEL</button>
+                <button class="btn btn-op" onclick="appendChar('%')">%</button>
+                <button class="btn btn-op" onclick="appendChar('/')">÷</button>
+
+                <!-- Row 3: Numbers & Multiply -->
+                <button class="btn" onclick="appendChar('7')">7</button>
+                <button class="btn" onclick="appendChar('8')">8</button>
+                <button class="btn" onclick="appendChar('9')">9</button>
+                <button class="btn btn-op" onclick="appendChar('*')">×</button>
+
+                <!-- Row 4: Numbers & Subtract -->
+                <button class="btn" onclick="appendChar('4')">4</button>
+                <button class="btn" onclick="appendChar('5')">5</button>
+                <button class="btn" onclick="appendChar('6')">6</button>
+                <button class="btn btn-op" onclick="appendChar('-')">−</button>
+
+                <!-- Row 5: Numbers, Add, Eq (Span) -->
+                <button class="btn" onclick="appendChar('1')">1</button>
+                <button class="btn" onclick="appendChar('2')">2</button>
+                <button class="btn" onclick="appendChar('3')">3</button>
+                <button class="btn btn-op" onclick="appendChar('+')">+</button>
+
+                <!-- Row 6: Zero, Dot, Eq -->
+                <button class="btn" onclick="appendChar('0')" style="grid-column: span 2;">0</button>
+                <button class="btn" onclick="appendChar('.')">.</button>
+                <button class="btn btn-eq" onclick="calculate()">=</button>
+            </div>
+        </div>
+
+        <!-- Right / Overlay Side Panel (History/Steps) -->
+        <div class="side-panel" id="sidePanel">
+            <div class="side-panel-inner">
+                <div class="panel-header">
+                    <span class="panel-title" id="panelTitle">History</span>
+                    <button class="panel-close" onclick="closePanel()">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="panel-content" id="panelContent">
+                    <!-- Content injected via JS -->
+                    <div style="opacity: 0.5; text-align: center; margin-top: 50px;">No entries yet.</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // State
+        let currentInput = '';
+        let expression = '';
+        let history = [];
+        let isSimulatingAI = false;
+
+        // DOM Elements
+        const displayResult = document.getElementById('resultDisplay');
+        const displayExpr = document.getElementById('expressionDisplay');
+        const aiProcessing = document.getElementById('aiProcessing');
+        const aiQueryInput = document.getElementById('aiQuery');
+        const voiceBtn = document.getElementById('voiceBtn');
+        const sidePanel = document.getElementById('sidePanel');
+        const panelTitle = document.getElementById('panelTitle');
+        const panelContent = document.getElementById('panelContent');
+
+        // Update Display
+        function updateDisplay() {
+            if (isSimulatingAI) return;
+            // Format operations for display
+            let displayStr = expression.replace(/\*/g, '×').replace(/\//g, '÷').replace(/-/g, '−');
+            displayExpr.innerText = displayStr;
+            
+            // Format current input or result
+            if (currentInput === '') {
+                displayResult.innerText = expression === '' ? '0' : '';
+            } else {
+                displayResult.innerText = currentInput;
+            }
+
+            // Simple auto-scaling text
+            if (displayResult.innerText.length > 10) {
+                displayResult.style.fontSize = '1.8rem';
+            } else if (displayResult.innerText.length > 7) {
+                displayResult.style.fontSize = '2.2rem';
+            } else {
+                displayResult.style.fontSize = '2.8rem';
+            }
+        }
+
+        // Basic Appends
+        function appendChar(char) {
+            if (isSimulatingAI) return;
+            
+            if (['+', '-', '*', '/', '%'].includes(char)) {
+                if (currentInput !== '') {
+                    expression += currentInput + char;
+                    currentInput = '';
+                } else if (expression !== '' && !['+', '-', '*', '/', '%'].includes(expression.slice(-1))) {
+                    expression += char;
+                } else if (expression !== '' && ['+', '-', '*', '/', '%'].includes(expression.slice(-1))) {
+                    // Replace last operator
+                    expression = expression.slice(0, -1) + char;
+                }
+            } else {
+                // Number or dot
+                if (char === '.' && currentInput.includes('.')) return;
+                // If previous was a result, clear expression if new number typed
+                if (expression === '' && currentInput !== '' && !currentInput.includes('.')) {
+                   // This logic can be refined for chaining calculations
+                }
+                currentInput += char;
+            }
+            updateDisplay();
+        }
+
+        // Advanced Functions
+        function appendFunc(funcName) {
+            if (isSimulatingAI) return;
+            if (currentInput !== '') {
+                expression += `${funcName}(${currentInput})`;
+                currentInput = '';
+            } else {
+                expression += `${funcName}(`;
+            }
+            updateDisplay();
+        }
+
+        // Controls
+        function clearAll() {
+            if (isSimulatingAI) return;
+            currentInput = '';
+            expression = '';
+            displayResult.style.color = 'var(--text-main)';
+            updateDisplay();
+        }
+
+        function deleteLast() {
+            if (isSimulatingAI) return;
+            if (currentInput !== '') {
+                currentInput = currentInput.slice(0, -1);
+            } else if (expression !== '') {
+                expression = expression.slice(0, -1);
+            }
+            updateDisplay();
+        }
+
+        // Core Evaluator
+        function evaluateExpression(expr) {
+            try {
+                // Basic sanitization
+                let safeExpr = expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+                
+                // Handle Math functions mapping
+                safeExpr = safeExpr.replace(/sin\(/g, 'Math.sin(');
+                safeExpr = safeExpr.replace(/cos\(/g, 'Math.cos(');
+                safeExpr = safeExpr.replace(/tan\(/g, 'Math.tan(');
+                safeExpr = safeExpr.replace(/sqrt\(/g, 'Math.sqrt(');
+                
+                // Percentages logic (simplified)
+                safeExpr = safeExpr.replace(/(\d+)%/g, '($1/100)');
+
+                // Use new Function instead of eval for slight safety improvement in this scope
+                const result = new Function('return ' + safeExpr)();
+                
+                if (!isFinite(result) || isNaN(result)) throw new Error("Math Error");
+                
+                // Format floating points
+                return parseFloat(result.toFixed(8)).toString();
+            } catch (e) {
+                return "Error";
+            }
+        }
+
+        function calculate() {
+            if (isSimulatingAI || (expression === '' && currentInput === '')) return;
+            
+            let fullExpr = expression + currentInput;
+            
+            // Auto close parentheses if needed (naive approach)
+            let openP = (fullExpr.match(/\(/g) || []).length;
+            let closeP = (fullExpr.match(/\)/g) || []).length;
+            while(openP > closeP) {
+                fullExpr += ')';
+                closeP++;
+            }
+
+            const res = evaluateExpression(fullExpr);
+            
+            // Save to history
+            if (res !== "Error") {
+                history.unshift({ expr: fullExpr, res: res });
+                if (history.length > 10) history.pop();
+            }
+
+            displayExpr.innerText = fullExpr.replace(/\*/g, '×').replace(/\//g, '÷').replace(/-/g, '−') + ' =';
+            currentInput = res;
+            expression = '';
+            
+            if (res === "Error") {
+                displayResult.style.color = 'var(--danger)';
+                currentInput = '';
+            } else {
+                displayResult.style.color = 'var(--neon-blue)';
+            }
+            
+            displayResult.innerText = res;
+            
+            // Reset font size
+            updateDisplay();
+        }
+
+        // AI Natural Language Simulation
+        aiQueryInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && this.value.trim() !== '') {
+                simulateAIProcessing(this.value);
+            }
+        });
+
+        function simulateAIProcessing(query) {
+            isSimulatingAI = true;
+            displayExpr.innerText = `Query: "${query}"`;
+            displayResult.style.display = 'none';
+            aiProcessing.style.display = 'block';
+            aiProcessing.innerText = 'Neural Engine Computing...';
+            
+            // Disable inputs
+            aiQueryInput.disabled = true;
+
+            setTimeout(() => {
+                isSimulatingAI = false;
+                displayResult.style.display = 'block';
+                aiProcessing.style.display = 'none';
+                aiQueryInput.disabled = false;
+                aiQueryInput.value = '';
+
+                // Mock AI Logic Parsing
+                const lowerQuery = query.toLowerCase();
+                let mockResult = "I'm not sure how to solve that yet.";
+                let mockSteps = "<ul><li>Analyzing input text...</li><li>Mathematical model could not be determined.</li></ul>";
+
+                if (lowerQuery.includes('15% of 1024')) {
+                    mockResult = "153.6";
+                    mockSteps = "<ul><li>Extracting values: Base = 1024, Percentage = 15%</li><li>Formula: Base * (Percentage / 100)</li><li>Calculation: 1024 * 0.15</li><li>Result: 153.6</li></ul>";
+                } else if (lowerQuery.includes('solve') && lowerQuery.includes('x')) {
+                    mockResult = "x = 3";
+                    mockSteps = "<ul><li>Identified linear equation.</li><li>Isolating variable 'x'.</li><li>Applying inverse operations to both sides.</li><li>Simplified to x = 3.</li></ul>";
+                } else if (lowerQuery.includes('derivative') || lowerQuery.includes('integral')) {
+                    mockResult = "2x";
+                    mockSteps = "<ul><li>Applying calculus module.</li><li>Using power rule for differentiation: d/dx[x^n] = n*x^(n-1).</li><li>Result: 2x.</li></ul>";
+                }
+
+                displayResult.innerText = mockResult;
+                displayResult.style.color = 'var(--neon-purple)';
+                
+                // Add to history as AI query
+                history.unshift({ expr: `AI: ${query}`, res: mockResult, steps: mockSteps });
+                if (history.length > 10) history.pop();
+
+                // Auto open steps panel if steps exist
+                showSteps(mockSteps);
+                
+            }, 1500);
+        }
+
+        // Voice button simulation
+        voiceBtn.addEventListener('click', () => {
+            voiceBtn.classList.toggle('recording');
+            if (voiceBtn.classList.contains('recording')) {
+                aiQueryInput.placeholder = "Listening...";
+                setTimeout(() => {
+                    voiceBtn.classList.remove('recording');
+                    aiQueryInput.value = "Solve 15% of 1024";
+                    aiQueryInput.placeholder = "Ask AI: e.g. 'Solve 15% of 1024'";
+                    simulateAIProcessing(aiQueryInput.value);
+                }, 2000);
+            } else {
+                aiQueryInput.placeholder = "Ask AI: e.g. 'Solve 15% of 1024'";
+            }
+        });
+
+        // Panel Management
+        function togglePanel(type) {
+            if (sidePanel.classList.contains('active') && panelTitle.innerText.toLowerCase() === type) {
+                closePanel();
+                return;
+            }
+            
+            sidePanel.classList.add('active');
+            
+            if (type === 'history') {
+                panelTitle.innerText = 'History';
+                renderHistory();
+            } else if (type === 'steps') {
+                panelTitle.innerText = 'AI Steps';
+                if (history.length > 0 && history[0].steps) {
+                    panelContent.innerHTML = history[0].steps;
+                } else {
+                    panelContent.innerHTML = '<div style="opacity: 0.5; text-align: center; margin-top: 50px;">Run an AI query to see steps here.</div>';
+                }
+            }
+        }
+
+        function closePanel() {
+            sidePanel.classList.remove('active');
+        }
+
+        function showSteps(stepsHtml) {
+            sidePanel.classList.add('active');
+            panelTitle.innerText = 'AI Steps';
+            panelContent.innerHTML = stepsHtml;
+        }
+
+        function renderHistory() {
+            if (history.length === 0) {
+                panelContent.innerHTML = '<div style="opacity: 0.5; text-align: center; margin-top: 50px;">No entries yet.</div>';
+                return;
+            }
+
+            panelContent.innerHTML = history.map(item => `
+                <div class="history-item" onclick="loadHistory('${item.res}')">
+                    <div class="history-expr">${item.expr}</div>
+                    <div class="history-res">${item.res}</div>
+                </div>
+            `).join('');
+        }
+
+        function loadHistory(res) {
+            if (isSimulatingAI) return;
+            currentInput = res;
+            expression = '';
+            displayResult.style.color = 'var(--text-main)';
+            updateDisplay();
+            if (window.innerWidth <= 800) {
+                closePanel(); // Auto close on mobile after selection
+            }
+        }
+
+        // Initialize display
+        updateDisplay();
+    </script>
+</body>
+</html>
